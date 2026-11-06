@@ -7,13 +7,9 @@
 .workspace > .room-main { min-width: 0; }
 
 .room-chat {
-  position: sticky;
-  top: 0;
-  align-self: start;
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - 89px);
-  min-height: 15rem;
+  min-height: 0;
   min-width: 0;
   border-left: 1px solid #e3e8dc;
   background: #fffefa;
@@ -30,6 +26,7 @@
   background: #f3f6ed;
   border-bottom: 1px solid #e3e8dc;
 }
+.room-chat-header, .room-chat-form, .room-chat-error { flex-shrink: 0; }
 .room-chat-label {
   color: #59674e;
   text-transform: uppercase;
@@ -69,7 +66,7 @@
 }
 .room-chat-form button { background: #eaf0e1; }
 .room-chat-error { color: #8c4038; padding: 0 .75rem .5rem; font-size: .8rem; }
-.room-chat-rail { position: sticky; top: 1rem; align-self: start; padding-top: 1rem; }
+.room-chat-rail { align-self: start; padding-top: 1rem; }
 .room-chat-launcher {
   position: relative;
   display: grid;

@@ -133,4 +133,42 @@ kbd { display: grid; place-items: center; width: 20px; height: 21px; border: 1px
 @media (max-width: 1100px) { .workspace { grid-template-columns: 215px minmax(0, 1fr); }.sidebar { padding-left: 11px; padding-right: 11px; }.room-main { padding: 28px 25px 0; }.room-mood { display: none; }.room-link { gap: 8px; }.under-room > span { display: none; }.welcome-card { max-width: 900px; }.welcome-story { padding-left: 32px; padding-right: 32px; }.welcome-form { padding-left: 32px; padding-right: 32px; } }
 @media (max-width: 780px) { .app-header { padding: 0 22px; height: 77px; }.version-label { display: none; }.workspace { grid-template-columns: 178px minmax(0, 1fr); min-height: calc(100vh - 77px); }.sidebar { padding: 26px 8px 20px; }.sidebar-heading { padding: 0 9px; }.sidebar-heading .eyebrow { font-size: 8px; letter-spacing: 1px; }.room-total, .room-index { display: none; }.room-link { padding: 13px 8px; gap: 6px; }.room-link-copy strong { font-size: 11px; }.room-link-copy small { font-size: 8px; }.room-main { padding: 25px 18px 0; }.room-heading h1 { font-size: 30px; }.room-heading p { font-size: 11px; line-height: 1.7; }.canvas-controls { flex-wrap: wrap; gap: 13px; }.key-hint { font-size: 9px; }.under-room p { line-height: 1.8; font-size: 10px; }.under-room svg { flex-shrink: 0; }.canvas-topline > span:last-child { display: none; }.welcome-page { padding: 28px 20px; min-height: calc(100vh - 77px); }.welcome-card { grid-template-columns: 1fr 1fr; }.welcome-story { padding: 34px 24px; }.welcome-story h1 { font-size: 35px; }.welcome-story > p { font-size: 12px; }.welcome-form { padding: 29px 24px; }.welcome-form h2 { font-size: 23px; }.welcome-cats { margin-top: 70px; height: auto; }.color-options { gap: 12px; }.color-option { width: 27px; height: 27px; }.welcome-caption { font-size: 9px; } }
 @media (max-width: 620px) { .app-header { padding: 0 18px; }.brand p { font-size: 9px; }.local-pill { font-size: 9px; }.welcome-card { display: block; max-width: 420px; }.welcome-story { padding: 24px 30px; }.welcome-story h1 { margin: 12px 0; font-size: 31px; }.welcome-story > p { font-size: 12px; }.welcome-story > p br { display: none; }.welcome-cats, .welcome-caption { display: none; }.welcome-form { padding: 26px 30px; }.welcome-bottom { text-align: center; line-height: 1.8; }.workspace { display: flex; flex-direction: column; }.sidebar { border-right: 0; border-bottom: 1px solid #e3e7d9; padding: 13px 15px; }.sidebar-heading, .sidebar-note { display: none; }.room-navigation { flex-direction: row; overflow-x: auto; gap: 5px; padding: 4px; }.room-link { flex: 0 0 auto; width: auto; padding: 10px; gap: 6px; }.room-link-copy small { display: none; }.room-icon { width: 22px; }.room-link-copy strong { font-size: 10px; }.profile-button { align-self: flex-end; padding: 0; border: 0; margin-top: 10px; }.profile-avatar { width: 26px; height: 26px; border-radius: 8px; }.profile-avatar svg { width: 26px; height: 26px; }.profile-button small { display: none; }.profile-button > span:nth-child(2) { max-width: 180px; }.room-main { padding: 24px 16px 0; }.room-heading { margin-bottom: 20px; }.room-heading h1 { font-size: 31px; }.canvas-topline { padding: 11px 12px; }.canvas-controls { padding: 12px; }.room-footer { flex-wrap: wrap; }.room-breadcrumb { font-size: 8px; } }
+@media (min-width: 781px) {
+  .app:has(> .workspace) {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh;
+  }
+  .app > .workspace {
+    min-height: 0;
+    min-width: 0;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .workspace > :is(.sidebar, .room-main) {
+    min-height: 0;
+    min-width: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .workspace > .room-main,
+  .workspace .game-frame {
+    display: flex;
+    flex-direction: column;
+  }
+  .workspace > .sidebar > *,
+  .room-main > :not(.game-frame),
+  .game-frame > :not(.canvas-area) {
+    flex-shrink: 0;
+  }
+  .workspace .game-frame {
+    flex: 1 0 0;
+    min-height: min-content;
+  }
+  .workspace .canvas-area {
+    flex: 1 0 0;
+    min-height: 160px;
+    aspect-ratio: auto;
+    max-height: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
