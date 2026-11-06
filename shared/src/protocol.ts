@@ -32,7 +32,26 @@ export const snapshotSchema = z.object({
   roomId: roomIdSchema, revision: z.number().int().nonnegative(), players: z.array(playerSchema).max(MAX_PLAYERS),
 }).strict().refine((snapshot) => snapshot.players.every((player) => player.roomId === snapshot.roomId)
   && new Set(snapshot.players.map((player) => player.id)).size === snapshot.players.length);
-export const roomEntrySchema = z.object({ membershipVersion: z.number().int().min(1), snapshot: snapshotSchema }).strict();
+export const CHAT_LIMIT = 500;
+export const CHAT_HISTORY_LIMIT = 100;
+const chatTextSchema = z.string().max(CHAT_LIMIT).trim().min(1);
+export const chatSendSchema = z.object({
+  text: chatTextSchema,
+  membershipVersion: z.number().int().min(1),
+}).strict();
+export const chatMessageSchema = z.object({
+  id: z.uuid(),
+  roomId: roomIdSchema,
+  senderId: z.uuid(),
+  nickname: preferencesSchema.shape.nickname,
+  text: chatTextSchema,
+  sentAt: z.number().int().nonnegative().max(8.64e15),
+}).strict();
+export const roomEntrySchema = z.object({
+  membershipVersion: z.number().int().min(1),
+  snapshot: snapshotSchema,
+  history: z.array(chatMessageSchema).max(CHAT_HISTORY_LIMIT),
+}).strict();
 export const joinedSchema = roomEntrySchema.extend({
   playerId: z.uuid(), resumeToken: z.string().regex(/^[a-f0-9]{64}$/), counts: presenceSchema,
 }).strict().refine((joined) => joined.snapshot.players.some((player) => player.id === joined.playerId && player.membershipVersion === joined.membershipVersion));

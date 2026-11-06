@@ -1,0 +1,35 @@
+.room-chat, .room-chat-launcher {
+  position: fixed;
+  z-index: 5;
+  right: 1rem;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  background: #fffefa;
+  color: #414b3e;
+  border: 1px solid #dce4d3;
+  border-radius: 1rem;
+  box-shadow: 0 6px 24px #414b3e20;
+}
+.room-chat { width: min(22rem, calc(100vw - 2rem)); display: flex; flex-direction: column; max-height: min(30rem, 65dvh); }
+.room-chat-header, .room-chat-form, .room-chat-log article header { display: flex; align-items: center; gap: .5rem; }
+.room-chat-header { padding: .55rem .75rem; background: #eaf0e1; border-radius: 1rem 1rem 0 0; }
+.room-chat-header > :first-child { margin-right: auto; }
+.room-chat button, .room-chat-launcher { padding: .3rem .55rem; }
+.room-chat button { border-radius: .5rem; }
+.room-chat button:hover:not(:disabled) { background: #dce6d2; }
+.room-chat button:disabled { opacity: .55; }
+.room-chat-badge { background: #d9e6ce; border-radius: 1rem; padding: .15rem .4rem; font-size: .75rem; }
+.room-chat-status, .room-chat-error { padding: .35rem .75rem; font-size: .8rem; }
+.room-chat-error { color: #8c4038; }
+.room-chat-log { overflow-y: auto; overscroll-behavior: contain; min-height: 0; height: 13rem; padding: .5rem .75rem; }
+.room-chat-log article { margin-block: .45rem; padding: .45rem .6rem; background: #f2f5ed; border-radius: .65rem; }
+.room-chat-log article header { justify-content: space-between; font-size: .8rem; overflow-wrap: anywhere; }
+.room-chat-log time { flex-shrink: 0; color: #56614f; }
+.room-chat-log article p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .9rem; }
+.room-chat-empty { color: #56614f; font-size: .9rem; }
+.room-chat-form { padding: .65rem .75rem; }
+.room-chat-form textarea { flex: 1; min-width: 0; resize: none; border: 1px solid #cdd6c0; border-radius: .5rem; padding: .35rem; }
+.room-chat-form button { background: #eaf0e1; }
+@media (max-width: 600px) {
+  .room-chat { right: .5rem; width: calc(100vw - 1rem); }
+  .room-chat-form textarea { font-size: 16px; }
+}

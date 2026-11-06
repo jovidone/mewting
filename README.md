@@ -125,11 +125,11 @@ The [technical review](docs/TECHNICAL_REVIEW.md) records the original design dec
 | --- | --- | --- |
 | 1 | Initialization, frontend, blob cats, five rooms, local movement | Implemented |
 | 2 | Socket.IO multiplayer, server identity, rooms, presence, synchronization | Implemented |
-| 3 | Room chat and invite links | Invites implemented. Chat pending. |
+| 3 | Room chat and invite links | Implemented |
 | 4 | LiveKit voice, permissions, speaking indicators, room audio isolation | Not implemented |
 | 5 | Full-product testing, error handling, documentation, visual polish | Not implemented |
 
 - Furniture is decorative and can be walked through. Only room boundaries block movement. Avatar depth sorting and furniture collision are not part of Milestone 1.
 - Keyboard controls are desktop-only. The interface adapts to narrower widths, but touch movement is out of scope.
 - WebGL is required; a failed renderer shows a retry action and browser guidance. There is no software-canvas fallback or WebGL context-loss recovery yet.
-- Chat and voice are pending. Multiplayer state is held in memory and resets when the backend restarts.
+- Room chat keeps the latest 100 messages per room in memory. Messages and multiplayer state reset when the backend restarts. Voice is pending.

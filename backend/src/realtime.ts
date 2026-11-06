@@ -2,7 +2,8 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import type { Server as HttpServer } from 'node:http';
 import { Server, type Socket } from 'socket.io';
 import {
-  INPUT_TIMEOUT_MS, MAX_PLAYERS, ROOMS, advancePosition, getRoom, inputSchema, joinSchema,
+  CHAT_HISTORY_LIMIT, INPUT_TIMEOUT_MS, MAX_PLAYERS, ROOMS, advancePosition, chatSendSchema, getRoom, inputSchema, joinSchema,
+  type ChatMessage,
   preferencesSchema, roomJoinSchema, type Acknowledge, type ClientToServerEvents, type PlayerSnapshot,
   type Presence, type ProtocolError, type RoomId, type RoomSnapshot, type ServerToClientEvents,
 } from '@mewting/shared';
@@ -18,6 +19,7 @@ interface Session {
   lastInput: number;
   movementLimit: RateLimit;
   actionLimit: RateLimit;
+  chatLimit: RateLimit;
 }
 export interface RealtimeOptions { allowedOrigins: string[]; sessionGraceMs?: number }
 const roomChannel = (id: RoomId) => `room:${id}`;
@@ -32,6 +34,8 @@ export function attachRealtime(server: HttpServer, options: RealtimeOptions) {
     allowRequest: (request, callback) => callback(null, originAllowed(request.headers.origin)),
   });
   const sessions = new Map<string, Session>();
+  const chatHistory = new Map<RoomId, ChatMessage[]>();
+  const history = (id: RoomId) => chatHistory.get(id) ?? [];
   const tokens = new Map<string, string>();
   const revisions = new Map<RoomId, number>(ROOMS.map((room) => [room.id, 0]));
   const dirty = new Set<RoomId>();
@@ -89,6 +93,7 @@ export function attachRealtime(server: HttpServer, options: RealtimeOptions) {
           player: { id: randomUUID(), nickname: parsed.data.nickname, color: parsed.data.color, roomId,
             position: { ...getRoom(roomId).spawn }, direction: { x: 0, y: 0 }, membershipVersion: 0, lastInputSequence: 0 },
           lastInput: 0, movementLimit: new RateLimit(40, 30), actionLimit: new RateLimit(5, 1),
+          chatLimit: new RateLimit(5, 1),
         };
         sessions.set(session.player.id, session);
         tokens.set(session.token, session.player.id);
@@ -114,7 +119,8 @@ export function attachRealtime(server: HttpServer, options: RealtimeOptions) {
       clearTimeout(unjoinedTimeout);
       touch(session.player.roomId);
       ack({ ok: true, data: { playerId: session.player.id, resumeToken: session.token,
-        membershipVersion: session.player.membershipVersion, snapshot: snapshot(session.player.roomId), counts: counts() } });
+        membershipVersion: session.player.membershipVersion, snapshot: snapshot(session.player.roomId),
+        history: history(session.player.roomId), counts: counts() } });
       presence();
     });
 
@@ -144,7 +150,30 @@ export function attachRealtime(server: HttpServer, options: RealtimeOptions) {
         void socket.join(roomChannel(parsed.data.roomId));
         touch(previous); touch(parsed.data.roomId); presence();
       }
-      ack({ ok: true, data: { membershipVersion: session.player.membershipVersion, snapshot: snapshot(session.player.roomId) } });
+      ack({ ok: true, data: { membershipVersion: session.player.membershipVersion,
+        snapshot: snapshot(session.player.roomId), history: history(session.player.roomId) } });
+    });
+
+    socket.on('chat:send', (payload, ack) => {
+      if (typeof ack !== 'function') return;
+      const session = current(socket);
+      if (!session) { fail(socket, 'NOT_JOINED', 'Join a room to send messages.', ack); return; }
+      if (!session.chatLimit.take()) { fail(socket, 'RATE_LIMITED', 'Wait a moment before sending another message.', ack); return; }
+      const parsed = chatSendSchema.safeParse(payload);
+      if (!parsed.success) { fail(socket, 'INVALID_INPUT', 'Enter a message of 1–500 characters.', ack); return; }
+      const { id, nickname, roomId, membershipVersion } = session.player;
+      if (parsed.data.membershipVersion !== membershipVersion) {
+        fail(socket, 'NOT_JOINED', 'The room changed. Send again when you’re ready.', ack);
+        return;
+      }
+      const message: ChatMessage = { id: randomUUID(), senderId: id, nickname, roomId,
+        text: parsed.data.text, sentAt: Date.now() };
+      const messages = history(roomId);
+      messages.push(message);
+      if (messages.length > CHAT_HISTORY_LIMIT) messages.shift();
+      chatHistory.set(roomId, messages);
+      io.to(roomChannel(roomId)).emit('chat:message', message);
+      ack({ ok: true, data: message });
     });
 
     socket.on('profile:update', (payload, ack) => {

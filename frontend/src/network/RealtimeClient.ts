@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import {
+  CHAT_HISTORY_LIMIT, chatMessageSchema, type ChatMessage,
   INPUT_INTERVAL_MS, errorSchema, joinedSchema, playerSchema, presenceSchema, resultSchema, roomEntrySchema, snapshotSchema,
   type ClientToServerEvents, type Direction, type LocalPlayer, type PlayerPreferences, type Presence,
   type RoomId, type RoomSnapshot, type ServerToClientEvents,
@@ -15,6 +16,8 @@ export interface MultiplayerState {
   counts: Presence;
   transitioning: boolean;
   error: string | null;
+  messages: ChatMessage[];
+  receivedMessages: number;
 }
 export interface SceneState {
   connected: boolean;
@@ -26,7 +29,7 @@ export interface SceneState {
 /** Transport and high-frequency snapshots stay outside React's render loop. */
 export class RealtimeClient {
   private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
-  private state: MultiplayerState = { status: 'idle', self: null, roomId: 'lobby', players: [], counts: emptyCounts(), transitioning: false, error: null };
+  private state: MultiplayerState = { status: 'idle', self: null, roomId: 'lobby', players: [], counts: emptyCounts(), transitioning: false, error: null, messages: [], receivedMessages: 0 };
   private listeners = new Set<() => void>();
   private sceneListeners = new Set<() => void>();
   private scene: RoomSnapshot | null = null;
@@ -52,7 +55,7 @@ export class RealtimeClient {
   start(preferences: PlayerPreferences, roomId: RoomId = 'lobby') {
     this.dispose();
     this.preferences = preferences;
-    this.update({ self: { ...preferences, id: crypto.randomUUID() }, roomId, status: 'connecting', error: null });
+    this.update({ self: { ...preferences, id: crypto.randomUUID() }, roomId, status: 'connecting', error: null, messages: [], receivedMessages: 0 });
     const socket = io(this.endpoint, { autoConnect: false, transports: ['websocket', 'polling'], tryAllTransports: true,
       reconnection: true, reconnectionDelay: 500, reconnectionDelayMax: 5000, timeout: 5000 });
     this.socket = socket;
@@ -77,6 +80,10 @@ export class RealtimeClient {
     socket.on('room:presence', (value) => {
       const parsed = presenceSchema.safeParse(value);
       if (parsed.success && this.state.status === 'online') this.update({ counts: parsed.data });
+    });
+    socket.on('chat:message', (value) => {
+      const parsed = chatMessageSchema.safeParse(value);
+      if (parsed.success && this.state.status === 'online') this.appendMessage(parsed.data);
     });
     socket.on('session:error', (value) => {
       const parsed = errorSchema.safeParse(value);
@@ -105,7 +112,8 @@ export class RealtimeClient {
       this.sequence = 0; this.input = { x: 0, y: 0 }; this.sentInput = { x: 0, y: 0 };
       this.scene = null; this.rosterKey = '';
       const self = joined.snapshot.players.find((player) => player.id === joined.playerId)!;
-      this.update({ status: 'online', self, roomId: joined.snapshot.roomId, counts: joined.counts, transitioning: false, error: null });
+      this.update({ status: 'online', self, roomId: joined.snapshot.roomId, counts: joined.counts,
+        transitioning: false, error: null, ...this.loadHistory(joined.snapshot.roomId, joined.history) });
       this.acceptSnapshot(joined.snapshot);
     } catch {
       if (generation === this.generation && socket === this.socket) {
@@ -148,7 +156,7 @@ export class RealtimeClient {
     const socket = this.socket;
     if (this.state.status === 'connecting' || this.state.transitioning) return false;
     if (!socket?.connected || this.state.status !== 'online') {
-      this.update({ roomId });
+      if (roomId !== this.state.roomId) this.update({ roomId, messages: [], receivedMessages: 0 });
       return true;
     }
     if (this.state.roomId === roomId) return true;
@@ -163,7 +171,8 @@ export class RealtimeClient {
       if (!parsed.data.ok) { this.update({ transitioning: false, error: parsed.data.error.message }); return false; }
       const entry = parsed.data.data;
       this.membershipVersion = entry.membershipVersion; this.scene = null;
-      this.update({ roomId: entry.snapshot.roomId, transitioning: false });
+      this.update({ roomId: entry.snapshot.roomId, transitioning: false,
+        ...this.loadHistory(entry.snapshot.roomId, entry.history) });
       this.acceptSnapshot(entry.snapshot);
       return true;
     } catch {
@@ -171,6 +180,45 @@ export class RealtimeClient {
       return false;
     }
   }
+
+  private loadHistory(roomId: RoomId, history: ChatMessage[]) {
+    const messages = [...new Map(history.filter((message) => message.roomId === roomId)
+      .map((message) => [message.id, message])).values()];
+    if (roomId !== this.state.roomId) return { messages, receivedMessages: 0 };
+    const lastId = this.state.messages.at(-1)?.id;
+    const lastIndex = messages.findIndex((message) => message.id === lastId);
+    const missed = lastIndex >= 0 ? messages.slice(lastIndex + 1) : [];
+    return { messages, receivedMessages: this.state.receivedMessages +
+      missed.filter((message) => message.senderId !== this.state.self?.id).length };
+  }
+
+  private appendMessage(message: ChatMessage) {
+    const { roomId, messages, self, receivedMessages } = this.state;
+    if (message.roomId !== roomId || messages.some(({ id }) => id === message.id)) return;
+    this.update({ messages: [...messages, message].slice(-CHAT_HISTORY_LIMIT),
+      receivedMessages: receivedMessages + Number(message.senderId !== self?.id) });
+  }
+
+  sendChat = async (text: string): Promise<string | null> => {
+    const socket = this.socket;
+    if (!socket?.connected || this.state.status !== 'online' || this.state.transitioning) {
+      return 'Connect to a room before sending.';
+    }
+    const membershipVersion = this.membershipVersion;
+    const generation = this.generation;
+    try {
+      const response: unknown = await socket.timeout(5000).emitWithAck('chat:send', { text, membershipVersion });
+      const parsed = resultSchema(chatMessageSchema).safeParse(response);
+      if (!parsed.success) return 'The host returned an invalid response.';
+      if (!parsed.data.ok) return parsed.data.error.message;
+      if (generation === this.generation && membershipVersion === this.membershipVersion) {
+        this.appendMessage(parsed.data.data);
+      }
+      return null;
+    } catch {
+      return 'Delivery could not be confirmed. Check the history before sending again.';
+    }
+  };
 
   async updateProfile(preferences: PlayerPreferences): Promise<boolean> {
     const socket = this.socket;

@@ -32,16 +32,40 @@ test('a guest joining the copied room shares server membership with the host', a
     host.start({ nickname: 'Host', color: 'sage' });
     await until(() => host.getState().status === 'online');
     assert.equal(await host.changeRoom('catfe'), true);
+    assert.equal(await host.sendChat('Welcome to Catfé'), null);
     const invite = new URL(invitationUrl(origin, host.getState().roomId));
     guest.start({ nickname: 'Guest', color: 'rose' }, invitedRoom(invite.search) ?? 'lobby');
     await until(() => host.getState().players.length === 2 && guest.getState().players.length === 2);
     for (const client of [host, guest]) {
       assert.equal(client.getScene().snapshot?.roomId, 'catfe');
       assert.deepEqual(client.getState().players.map((player) => player.nickname).sort(), ['Guest', 'Host']);
+      assert.deepEqual(client.getState().messages.map((message) => message.text), ['Welcome to Catfé']);
     }
+    const hostId = host.getState().self?.id;
+    const guestId = guest.getState().self?.id;
+    const initialX = guest.getScene().snapshot?.players.find((player) => player.id === hostId)?.position.x;
+    assert.ok(initialX !== undefined);
+    host.setInput({ x: 1, y: 0 });
+    await until(() => (guest.getScene().snapshot?.players.find((player) => player.id === hostId)?.position.x ?? 0) > initialX);
+    host.setInput({ x: 0, y: 0 });
+    assert.equal(await guest.sendChat('<script>hello</script>'), null);
+    await until(() => host.getState().messages.length === 2);
+    assert.equal(host.getState().messages.at(-1)?.text, '<script>hello</script>');
+    guest.retry();
+    await until(() => guest.getState().status === 'online');
+    assert.equal(guest.getState().self?.id, guestId);
+    assert.equal(guest.getState().messages.length, 2);
     assert.equal(await guest.changeRoom('pawffice'), true);
     await until(() => host.getState().players.length === 1);
     assert.equal(guest.getState().players.length, 1);
+    assert.deepEqual(guest.getState().messages, []);
+    assert.equal(await guest.sendChat('Pawffice only'), null);
+    // The host's acknowledgement follows any earlier broadcast on that socket.
+    assert.equal(await host.sendChat('Still in Catfé'), null);
+    assert.deepEqual(host.getState().messages.map((message) => message.text),
+      ['Welcome to Catfé', '<script>hello</script>', 'Still in Catfé']);
+    assert.equal(await guest.changeRoom('catfe'), true);
+    assert.equal(guest.getState().messages.length, 3);
   } finally {
     host.dispose();
     guest.dispose();
