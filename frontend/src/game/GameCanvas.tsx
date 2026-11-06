@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { LocalPlayer, RoomDefinition } from '@mewting/shared';
 import type { GameController } from './engine';
 import type { RealtimeClient } from '../network/RealtimeClient';
 
-export function GameCanvas({ player, room, paused, network }: { player: LocalPlayer; room: RoomDefinition; paused: boolean; network?: RealtimeClient }) {
+export function GameCanvas({ player, room, paused, network, voice }: { player: LocalPlayer; room: RoomDefinition; paused: boolean; network?: RealtimeClient; voice?: ReactNode }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const controller = useRef<GameController | null>(null);
   const latest = useRef({ player, room, paused });
@@ -72,5 +72,6 @@ export function GameCanvas({ player, room, paused, network }: { player: LocalPla
       <button type="button" className="focus-button" disabled={status !== 'ready' || paused} onClick={() => hostRef.current?.focus()}>{focused ? 'You’re free to wander' : 'Click here to wander'}<span aria-hidden="true">↗</span></button>
     </div>
     <span className="sr-only" aria-live="polite">You are in {room.name}. {room.description}</span>
+    {voice}
   </section>;
 }

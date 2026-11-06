@@ -7,6 +7,7 @@ import { GameCanvas } from './game/GameCanvas';
 import { readPreferences, savePreferences } from './preferences';
 import { InviteFriends } from './components/InviteFriends';
 import { RoomChat } from './components/RoomChat';
+import { RoomVoice } from './components/RoomVoice';
 import { invitedRoom } from './invitations';
 import { RealtimeClient } from './network/RealtimeClient';
 
@@ -87,7 +88,8 @@ export function App() {
         </section>
         {storageWarning && <p className="storage-warning" role="status">Your browser could not save your preferences. You can still explore; enter them again next time.</p>}
         {error && <p className="storage-warning" role="status">{error} {!online && <button type="button" onClick={network.retry}>Reconnect</button>}</p>}
-        <GameCanvas player={player} room={room} paused={editing || transitioning} network={network} />
+        <GameCanvas player={player} room={room} paused={editing || transitioning} network={network}
+          voice={<RoomVoice network={network} roomId={roomId} enabled={online && !transitioning} />} />
         <div className="under-room"><p><Icon name="leaf" size={17} />{room.note}</p></div>
         <footer className="room-footer"><span className="footer-flower">✳</span><span>A cozy place to be yourself.</span><span className="local-footnote">Mewting · v0.1</span></footer>
       </main>

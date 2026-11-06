@@ -20,6 +20,7 @@ interface Session {
   movementLimit: RateLimit;
   actionLimit: RateLimit;
   chatLimit: RateLimit;
+  voiceLimit: RateLimit;
 }
 export interface RealtimeOptions { allowedOrigins: string[]; sessionGraceMs?: number }
 const roomChannel = (id: RoomId) => `room:${id}`;
@@ -94,6 +95,7 @@ export function attachRealtime(server: HttpServer, options: RealtimeOptions) {
             position: { ...getRoom(roomId).spawn }, direction: { x: 0, y: 0 }, membershipVersion: 0, lastInputSequence: 0 },
           lastInput: 0, movementLimit: new RateLimit(40, 30), actionLimit: new RateLimit(5, 1),
           chatLimit: new RateLimit(5, 1),
+          voiceLimit: new RateLimit(6, 0.5),
         };
         sessions.set(session.player.id, session);
         tokens.set(session.token, session.player.id);
@@ -216,5 +218,17 @@ export function attachRealtime(server: HttpServer, options: RealtimeOptions) {
     prune();
   }, 1000 / 30);
   ticker.unref();
-  return { close: async () => { clearInterval(ticker); await new Promise<void>((resolve) => io.close(() => resolve())); } };
+  return {
+    authorizeVoice(token: string, roomId: RoomId, membershipVersion: number) {
+      const id = tokens.get(token);
+      const session = id ? sessions.get(id) : undefined;
+      if (!session?.socketId || !io.sockets.sockets.get(session.socketId)?.connected
+        || session.player.roomId !== roomId || session.player.membershipVersion !== membershipVersion) {
+        return { status: 403 } as const;
+      }
+      if (!session.voiceLimit.take()) return { status: 429 } as const;
+      return { status: 200, player: session.player } as const;
+    },
+    close: async () => { clearInterval(ticker); await new Promise<void>((resolve) => io.close(() => resolve())); },
+  };
 }

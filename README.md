@@ -8,7 +8,7 @@ Choose a nickname and coat, explore five rooms with WASD or the arrow keys, and 
 
 - Windows 10/11 with native **Node.js 22.12+ (22.x) or Node.js 24.x**, and **npm 10+**. This workspace was verified using Node.js 24.19.0 and npm 11.17.0.
 - PowerShell and a modern desktop browser with WebGL enabled.
-- Internet access for the first dependency installation. No WSL, containers, database, or LiveKit installation is needed for this milestone.
+- Internet access for the first dependency installation. Voice requires a LiveKit Cloud project or a native LiveKit server for local testing.
 
 ## Start developing
 
@@ -126,10 +126,20 @@ The [technical review](docs/TECHNICAL_REVIEW.md) records the original design dec
 | 1 | Initialization, frontend, blob cats, five rooms, local movement | Implemented |
 | 2 | Socket.IO multiplayer, server identity, rooms, presence, synchronization | Implemented |
 | 3 | Room chat and invite links | Implemented |
-| 4 | LiveKit voice, permissions, speaking indicators, room audio isolation | Not implemented |
+| 4 | LiveKit room audio, microphone permissions, and voice presence | Implemented. Requires LiveKit configuration. |
 | 5 | Full-product testing, error handling, documentation, visual polish | Not implemented |
 
 - Furniture is decorative and can be walked through. Only room boundaries block movement. Avatar depth sorting and furniture collision are not part of Milestone 1.
 - Keyboard controls are desktop-only. The interface adapts to narrower widths, but touch movement is out of scope.
 - WebGL is required; a failed renderer shows a retry action and browser guidance. There is no software-canvas fallback or WebGL context-loss recovery yet.
-- Room chat keeps the latest 100 messages per room in memory. Messages and multiplayer state reset when the backend restarts. Voice is pending.
+- Room chat keeps the latest 100 messages per room in memory. Messages and multiplayer state reset when the backend restarts.
+
+## Room voice
+
+Create a [LiveKit Cloud project](https://cloud.livekit.io/) and generate an API key and secret in the project dashboard. Copy the project WebSocket URL from Project Settings. Copy `backend/.env.example` to `backend/.env` if needed, then set `LIVEKIT_URL` to that `wss://` URL and fill in `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`. Keep credentials in the backend environment. Restart Mewting with `npm run dev`.
+
+For local-only Windows testing, download the Windows binary from the [official LiveKit releases](https://github.com/livekit/livekit/releases) and run `livekit-server.exe --dev`. Use the development credentials reported by the server and set `LIVEKIT_URL=ws://127.0.0.1:7880`. Use those credentials only on loopback. [LiveKit local setup](https://docs.livekit.io/transport/self-hosting/local/)
+
+For public testing, use the HTTPS tunnel setup above with the LiveKit Cloud WSS URL. Browsers connect directly to LiveKit for WebRTC media. The tunnel carries Mewting and its token endpoint. LiveKit Cloud provides TURN over TLS for networks where direct UDP is blocked. [LiveKit Cloud firewall requirements](https://docs.livekit.io/deploy/admin/firewall/)
+
+Open Mewting in two browsers and enter the Lobby. Verify both voice indicators show two participants and muted microphones. Click **Unmute mic** in one browser and grant permission. In the other browser, click **Enable Sound** if prompted, then listen for the first player. Use headphones during same-device testing. Click **Mute mic** and verify transmission stops. Switch the first player to Catfé and verify both rooms show one participant and the moved player joins muted. To test permission denial, block microphone access in the browser and click **Unmute mic** again. Test the public deployment from two devices on different networks.

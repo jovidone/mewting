@@ -205,6 +205,18 @@ export class RealtimeClient {
     this.chatListeners.forEach((listener) => listener(message));
   }
 
+  requestVoiceToken = (signal: AbortSignal) => {
+    if (this.state.status !== 'online' || this.state.transitioning || !this.resumeToken) {
+      throw new Error('Join a room before connecting to voice.');
+    }
+    return fetch('/voice/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.resumeToken}` },
+      body: JSON.stringify({ roomId: this.state.roomId, membershipVersion: this.membershipVersion }),
+      signal,
+    });
+  };
+
   sendChat = async (text: string): Promise<string | null> => {
     const socket = this.socket;
     if (!socket?.connected || this.state.status !== 'online' || this.state.transitioning) {

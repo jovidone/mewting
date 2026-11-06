@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { buildApp } from './app.js';
+import { voiceConfigSchema } from './voice.js';
 
 const result = z.object({
   HOST: z.string().min(1).default('127.0.0.1'),
@@ -19,11 +20,16 @@ if (!result.success) {
   process.exitCode = 1;
 } else {
   const { PORT, PUBLIC_APP_URL } = result.data;
+  const voice = voiceConfigSchema.safeParse(process.env);
+  const voiceConfig = voice.success && (!PUBLIC_APP_URL || new URL(voice.data.LIVEKIT_URL).protocol === 'wss:')
+    ? voice.data : undefined;
+  if (!voiceConfig) console.warn('Voice disabled. Configure all LiveKit variables and use WSS for public access.');
   const app = buildApp(true, {
     allowedOrigins: ['http://localhost:5173', 'http://127.0.0.1:5173',
       `http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`,
       ...(PUBLIC_APP_URL ? [PUBLIC_APP_URL] : [])],
     serveFrontend: Boolean(PUBLIC_APP_URL),
+    voice: voiceConfig,
   });
   const shutdown = async () => {
     try {
