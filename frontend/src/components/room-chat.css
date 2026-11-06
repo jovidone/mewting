@@ -1,8 +1,8 @@
 .workspace:has(> .room-chat) {
-  grid-template-columns: 244px minmax(0, 1fr) 320px;
+  grid-template-columns: 210px minmax(0, 1fr) 290px;
 }
 .workspace:has(> .room-chat-rail) {
-  grid-template-columns: 244px minmax(0, 1fr) 44px;
+  grid-template-columns: 210px minmax(0, 1fr) 44px;
 }
 .workspace > .room-main { min-width: 0; }
 
@@ -99,9 +99,8 @@
 }
 
 @media (min-width: 781px) and (max-width: 1100px) {
-  .workspace:has(> .room-chat) { grid-template-columns: 215px minmax(0, 1fr) clamp(225px, 26vw, 285px); }
-  .workspace:has(> .room-chat-rail) { grid-template-columns: 215px minmax(0, 1fr) 44px; }
-  .workspace:has(> .room-chat) > .room-main { padding-inline: 18px; }
+  .workspace:has(> .room-chat) { grid-template-columns: 200px minmax(0, 1fr) clamp(225px, 26vw, 280px); }
+  .workspace:has(> .room-chat-rail) { grid-template-columns: 200px minmax(0, 1fr) 44px; }
 }
 @media (max-width: 780px) {
   .workspace:has(> .room-chat), .workspace:has(> .room-chat-rail) {

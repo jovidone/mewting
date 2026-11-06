@@ -139,6 +139,10 @@ kbd { display: grid; place-items: center; width: 20px; height: 21px; border: 1px
     grid-template-rows: auto minmax(0, 1fr);
     height: 100dvh;
   }
+  .app:has(> .workspace) > .app-header {
+    height: 72px;
+    padding-inline: 22px;
+  }
   .app > .workspace {
     min-height: 0;
     min-width: 0;
@@ -154,6 +158,33 @@ kbd { display: grid; place-items: center; width: 20px; height: 21px; border: 1px
   .workspace .game-frame {
     display: flex;
     flex-direction: column;
+  }
+  .workspace > .room-main {
+    max-width: none;
+    padding: 10px 12px 0;
+  }
+  .workspace .room-heading {
+    margin-bottom: 8px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .workspace .room-heading h1 {
+    font-size: 26px;
+    margin: 0 0 2px;
+  }
+  .workspace .room-breadcrumb,
+  .workspace .canvas-topline,
+  .workspace .under-room {
+    display: none;
+  }
+  .workspace .canvas-controls {
+    padding: 6px 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .workspace .room-footer {
+    padding: 3px 0;
+    border-top: 0;
   }
   .workspace > .sidebar > *,
   .room-main > :not(.game-frame),
