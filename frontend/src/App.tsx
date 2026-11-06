@@ -88,11 +88,11 @@ export function App() {
         {storageWarning && <p className="storage-warning" role="status">Your browser could not save your preferences. You can still explore; enter them again next time.</p>}
         {error && <p className="storage-warning" role="status">{error} {!online && <button type="button" onClick={network.retry}>Reconnect</button>}</p>}
         <GameCanvas player={player} room={room} paused={editing || transitioning} network={network} />
-        <RoomChat key={roomId} roomName={room.name} messages={messages} receivedMessages={receivedMessages}
-          online={online} transitioning={transitioning} send={network.sendChat} />
         <div className="under-room"><p><Icon name="leaf" size={17} />{room.note}</p></div>
         <footer className="room-footer"><span className="footer-flower">✳</span><span>A cozy place to be yourself.</span><span className="local-footnote">Mewting · v0.1</span></footer>
       </main>
+      <RoomChat key={roomId} roomName={room.name} messages={messages} receivedMessages={receivedMessages}
+        online={online} transitioning={transitioning} send={network.sendChat} />
     </div>}
     <dialog ref={dialogRef} className="profile-dialog" aria-labelledby="edit-title" onCancel={() => setEditing(false)}
       onClose={() => { setEditing(false); editButtonRef.current?.focus(); }}>
