@@ -1,0 +1,36 @@
+{
+  "name": "mewting",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0 <25",
+    "npm": ">=10"
+  },
+  "workspaces": [
+    "shared",
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "predev": "npm run build --workspace=@mewting/shared",
+    "dev": "concurrently --kill-others --names frontend,backend \"npm:dev:frontend\" \"npm:dev:backend\"",
+    "dev:frontend": "npm run dev --workspace=@mewting/frontend",
+    "dev:backend": "npm run dev --workspace=@mewting/backend",
+    "pretypecheck": "npm run build --workspace=@mewting/shared",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "pretest": "npm run build --workspace=@mewting/shared",
+    "test": "tsx --test tests/*.test.ts",
+    "preview": "npm run preview --workspace=@mewting/frontend"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "concurrently": "9.2.5",
+    "tsx": "^4.20.6",
+    "typescript": "5.9.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
