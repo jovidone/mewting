@@ -102,10 +102,10 @@ export function PlayersPanel(props: Props) {
 
   const count = props.players.length;
   return <div>
-    <button ref={toggle} className="secondary-button" type="button" aria-expanded={open}
+    <button ref={toggle} className="secondary-button players-trigger" type="button" aria-expanded={open}
       aria-haspopup="dialog"
       aria-controls={open ? id : undefined} aria-label={`Who's here? ${count} ${count === 1 ? 'cat' : 'cats'} here`}
-      onClick={() => setOpen(!open)}>{count} {count === 1 ? 'cat' : 'cats'} here <span aria-hidden="true">⌄</span></button>
+      onClick={() => setOpen(!open)}>{count} {count === 1 ? 'cat' : 'cats'} here</button>
     {open && createPortal(<section ref={panel} id={id} className="players-popover"
       role="dialog" aria-labelledby={`${id}-title`} tabIndex={-1}>
       <div className="players-popover-heading">

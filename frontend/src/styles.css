@@ -145,6 +145,7 @@ kbd { display: grid; place-items: center; width: 20px; height: 21px; border: 1px
 .profile-dialog::backdrop { background: #3c473c66; backdrop-filter: blur(4px); }
 .close-button { position: absolute; right: 17px; top: 17px; background: #f0f2e9; border: 0; padding: 5px; color: #8e997f; border-radius: 50%; }
 .secondary-button { border: 1px solid #cdd6c0; border-radius: 8px; padding: 9px 18px; color: #71835d; background: #fcfcf5; }
+.secondary-button.players-trigger { padding-inline: calc(18px + .42em); text-align: center; }
 @keyframes soft-turn { to { transform: rotate(360deg); } }
 @media (min-width: 1600px) { .room-main { padding-top: 40px; }.room-heading { margin-bottom: 30px; } }
 @media (max-width: 1100px) { .workspace { grid-template-columns: 215px minmax(0, 1fr); }.sidebar { padding-left: 11px; padding-right: 11px; }.room-main { padding: 28px 25px 0; }.room-mood { display: none; }.room-link { gap: 8px; }.under-room > span { display: none; }.welcome-card { max-width: 900px; }.welcome-story { padding-left: 32px; padding-right: 32px; }.welcome-form { padding-left: 32px; padding-right: 32px; } }
