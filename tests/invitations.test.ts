@@ -49,6 +49,10 @@ test('a guest joining the copied room shares server membership with the host', a
     assert.deepEqual(hostLive, ['Welcome to Catfé']);
     assert.deepEqual(guestLive, []);
     const guestId = guest.getState().self?.id;
+    assert.notEqual(hostId, guestId);
+    assert.equal(await guest.updateProfile({ nickname: 'Host', color: 'rose' }), true);
+    await until(() => host.getState().players.filter((player) => player.nickname === 'Host').length === 2);
+    assert.deepEqual(new Set(host.getState().players.map((player) => player.id)), new Set([hostId, guestId]));
     const initialX = guest.getScene().snapshot?.players.find((player) => player.id === hostId)?.position.x;
     assert.ok(initialX !== undefined);
     host.setInput({ x: 1, y: 0 });

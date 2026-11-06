@@ -8,6 +8,8 @@ import { readPreferences, savePreferences } from './preferences';
 import { InviteFriends } from './components/InviteFriends';
 import { RoomChat } from './components/RoomChat';
 import { RoomVoice } from './components/RoomVoice';
+import { PlayersPanel } from './components/PlayersPanel';
+import { VoicePresence } from './network/VoicePresence';
 import { invitedRoom } from './invitations';
 import { RealtimeClient } from './network/RealtimeClient';
 
@@ -24,8 +26,9 @@ function Brand() {
 export function App() {
   const [preferences] = useState(readPreferences);
   const [network] = useState(() => new RealtimeClient());
+  const [voicePresence] = useState(() => new VoicePresence());
   const [invited] = useState(() => invitedRoom(window.location.search));
-  const { self: player, roomId, status, error, transitioning, messages, receivedMessages } = useSyncExternalStore(network.subscribe, network.getState);
+  const { self: player, roomId, players, status, error, transitioning, messages, receivedMessages } = useSyncExternalStore(network.subscribe, network.getState);
   const online = status === 'online';
   useEffect(() => () => network.dispose(), [network]);
   const [storageWarning, setStorageWarning] = useState(false);
@@ -84,12 +87,16 @@ export function App() {
         <section className="room-heading" aria-labelledby="room-title">
           <div><div className="eyebrow room-breadcrumb">YOUR LITTLE WORLD <span>/</span> ROOM 0{ROOMS.findIndex((entry) => entry.id === roomId) + 1}</div>
             <h1 id="room-title">{room.name}<span style={{ color: room.accent }}>.</span></h1><p>{room.description}</p></div>
-          <InviteFriends key={roomId} roomId={roomId} ready={online && !transitioning} />
+          <div className="room-actions">
+            <PlayersPanel key={roomId} players={online ? players : []} playerId={player.id} roomId={roomId} voice={voicePresence} />
+            <InviteFriends key={roomId} roomId={roomId} ready={online && !transitioning} />
+          </div>
         </section>
         {storageWarning && <p className="storage-warning" role="status">Your browser could not save your preferences. You can still explore; enter them again next time.</p>}
         {error && <p className="storage-warning" role="status">{error} {!online && <button type="button" onClick={network.retry}>Reconnect</button>}</p>}
-        <GameCanvas player={player} room={room} paused={editing || transitioning} network={network}
-          voice={<RoomVoice network={network} roomId={roomId} enabled={online && !transitioning} />} />
+        <GameCanvas player={player} room={room} paused={editing || transitioning} network={network} voicePresence={voicePresence}
+          voice={<RoomVoice network={network} roomId={roomId} enabled={online && !transitioning}
+            presence={voicePresence} playerId={player.id} />} />
         <div className="under-room"><p><Icon name="leaf" size={17} />{room.note}</p></div>
         <footer className="room-footer"><span className="footer-flower">✳</span><span>A cozy place to be yourself.</span><span className="local-footnote">Mewting · v0.1</span></footer>
       </main>

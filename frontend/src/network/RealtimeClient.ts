@@ -176,7 +176,8 @@ export class RealtimeClient {
       if (!parsed.data.ok) { this.update({ transitioning: false, error: parsed.data.error.message }); return false; }
       const entry = parsed.data.data;
       this.membershipVersion = entry.membershipVersion; this.scene = null;
-      this.update({ roomId: entry.snapshot.roomId, transitioning: false,
+      this.rosterKey = '';
+      this.update({ roomId: entry.snapshot.roomId, transitioning: false, players: [],
         ...this.loadHistory(entry.snapshot.roomId, entry.history) });
       this.acceptSnapshot(entry.snapshot);
       return true;

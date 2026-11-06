@@ -2,13 +2,16 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { ConnectionState, MediaDeviceFailure, Room, RoomEvent, Track, type RemoteTrack } from 'livekit-client';
 import type { RoomId } from '@mewting/shared';
 import type { RealtimeClient } from '../network/RealtimeClient';
+import { voiceState, type VoicePresence, type VoiceState } from '../network/VoicePresence';
 
 type Status = 'disconnected' | 'connecting' | 'connected' | 'error';
 
-export function RoomVoice({ network, roomId, enabled }: {
+export function RoomVoice({ network, roomId, enabled, presence, playerId }: {
   network: RealtimeClient;
   roomId: RoomId;
   enabled: boolean;
+  presence: VoicePresence;
+  playerId: string;
 }) {
   const [status, setStatus] = useState<Status>('disconnected');
   const [count, setCount] = useState(0);
@@ -31,6 +34,8 @@ export function RoomVoice({ network, roomId, enabled }: {
     if (!enabled) return;
 
     const abort = new AbortController();
+    const connecting = () => presence.replace(roomId, new Map([[playerId, 'connecting']]));
+    connecting();
     const audio = new Map<RemoteTrack, { element: HTMLMediaElement; owner: string }>();
     let room: Room | undefined;
     const detach = (track: RemoteTrack) => {
@@ -63,8 +68,22 @@ export function RoomVoice({ network, roomId, enabled }: {
 
       const connection = new Room({ publishDefaults: { stopMicTrackOnMute: true } });
       room = connection;
+      const refreshPresence = () => {
+        if (abort.signal.aborted) return;
+        if (connection.state !== ConnectionState.Connected) {
+          if (connection.state === ConnectionState.Disconnected) presence.clear(roomId);
+          else connecting();
+          return;
+        }
+        const roster = new Map<string, VoiceState>();
+        for (const participant of [connection.localParticipant, ...connection.remoteParticipants.values()]) {
+          roster.set(participant.identity, voiceState(participant));
+        }
+        presence.replace(roomId, roster);
+      };
       const refresh = () => {
         if (abort.signal.aborted) return;
+        refreshPresence();
         const connected = connection.state === ConnectionState.Connected;
         setStatus(connected ? 'connected' : 'connecting');
         setCount(connected ? connection.remoteParticipants.size + 1 : 0);
@@ -72,6 +91,9 @@ export function RoomVoice({ network, roomId, enabled }: {
         setBlocked(connected && !connection.canPlaybackAudio);
       };
       connection.on(RoomEvent.ConnectionStateChanged, refresh)
+        .on(RoomEvent.ActiveSpeakersChanged, refreshPresence)
+        .on(RoomEvent.TrackPublished, refreshPresence)
+        .on(RoomEvent.TrackUnpublished, refreshPresence)
         .on(RoomEvent.ParticipantConnected, refresh)
         .on(RoomEvent.ParticipantDisconnected, (participant) => {
           for (const [track, entry] of audio) if (entry.owner === participant.identity) detach(track);
@@ -92,6 +114,7 @@ export function RoomVoice({ network, roomId, enabled }: {
         .on(RoomEvent.Disconnected, () => {
           detachAll();
           if (abort.signal.aborted) return;
+          presence.clear(roomId);
           active.current = null;
           setMic(false);
           setCount(0);
@@ -108,6 +131,7 @@ export function RoomVoice({ network, roomId, enabled }: {
     }).catch(async (failure: unknown) => {
       detachAll();
       if (abort.signal.aborted) return;
+      presence.clear(roomId);
       active.current = null;
       setStatus('error');
       setCount(0);
@@ -123,6 +147,7 @@ export function RoomVoice({ network, roomId, enabled }: {
 
     return () => {
       abort.abort();
+      presence.clear(roomId);
       active.current = null;
       detachAll();
       room?.removeAllListeners();
@@ -131,7 +156,7 @@ export function RoomVoice({ network, roomId, enabled }: {
       const disconnect = room?.disconnect(true).catch(() => {});
       previous.current = Promise.all([run, disconnect]).then(() => undefined);
     };
-  }, [network, roomId, enabled, attempt]);
+  }, [network, roomId, enabled, attempt, presence, playerId]);
 
   async function toggleMic() {
     const room = active.current;

@@ -4,6 +4,8 @@ import { CAT_COLORS, type LocalPlayer } from '@mewting/shared';
 export function createMascot(player: LocalPlayer) {
   const root = new Container();
   const shadow = new Graphics().ellipse(0, 7, 28, 8).fill({ color: '#544e45', alpha: 0.13 });
+  const speakingRing = new Graphics().ellipse(0, 7, 34, 13).stroke({ color: '#729762', width: 2 });
+  speakingRing.visible = false;
   const body = new Container();
   const coat = CAT_COLORS.find((entry) => entry.id === player.color)!.hex;
   const tail = new Graphics().moveTo(21, -4).bezierCurveTo(47, 6, 43, -14, 40, -17).stroke({ color: coat, width: 9, cap: 'round' });
@@ -28,7 +30,7 @@ export function createMascot(player: LocalPlayer) {
   label.position.set(0, -76);
   const labelBackground = new Graphics().roundRect(-label.width / 2 - 10, -87, label.width + 20, 23, 9).fill({ color: '#ffffff', alpha: 0.94 });
   const marker = new Graphics().poly([-3, -61, 3, -61, 0, -57]).fill('#8a9978');
-  root.addChild(shadow, body, labelBackground, label, marker);
-  return { root, body, shadow };
+  root.addChild(shadow, speakingRing, body, labelBackground, label, marker);
+  return { root, body, shadow, speakingRing };
 }
 

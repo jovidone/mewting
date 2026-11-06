@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { LocalPlayer, RoomDefinition } from '@mewting/shared';
 import type { GameController } from './engine';
 import type { RealtimeClient } from '../network/RealtimeClient';
+import type { VoicePresence } from '../network/VoicePresence';
 
-export function GameCanvas({ player, room, paused, network, voice }: { player: LocalPlayer; room: RoomDefinition; paused: boolean; network?: RealtimeClient; voice?: ReactNode }) {
+export function GameCanvas({ player, room, paused, network, voice, voicePresence }: { player: LocalPlayer; room: RoomDefinition; paused: boolean; network?: RealtimeClient; voice?: ReactNode; voicePresence?: VoicePresence }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const controller = useRef<GameController | null>(null);
   const latest = useRef({ player, room, paused });
@@ -23,7 +24,7 @@ export function GameCanvas({ player, room, paused, network, voice }: { player: L
       try {
         const { mountGame } = await import('./engine');
         if (disposed) return;
-        const game = await mountGame(host, latest.current.player, latest.current.room, network, () => disposed);
+        const game = await mountGame(host, latest.current.player, latest.current.room, network, () => disposed, voicePresence);
         if (!game) return;
         if (disposed) { game.destroy(); return; }
         ownedGame = game;
@@ -52,7 +53,7 @@ export function GameCanvas({ player, room, paused, network, voice }: { player: L
       if (controller.current === ownedGame) controller.current = null;
       ownedGame?.destroy();
     };
-  }, [attempt, network]);
+  }, [attempt, network, voicePresence]);
 
   useEffect(() => { controller.current?.setRoom(room); }, [room]);
   useEffect(() => { controller.current?.setPlayer(player); }, [player]);

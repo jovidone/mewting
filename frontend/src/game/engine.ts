@@ -1,6 +1,7 @@
 import { Application, Container } from 'pixi.js';
 import { ROOM_HEIGHT, ROOM_WIDTH, advancePosition, type LocalPlayer, type PlayerSnapshot, type RoomDefinition } from '@mewting/shared';
 import type { RealtimeClient } from '../network/RealtimeClient';
+import type { VoicePresence } from '../network/VoicePresence';
 import { MOVEMENT_KEYS, readMovement } from './keyboard';
 import { createMascot } from './mascot';
 import { createScenery } from './scenery';
@@ -17,7 +18,7 @@ export interface GameController {
 }
 
 export async function mountGame(host: HTMLDivElement, player: LocalPlayer, initialRoom: RoomDefinition, network: RealtimeClient | undefined,
-  cancelled: () => boolean): Promise<GameController | null> {
+  cancelled: () => boolean, voicePresence?: VoicePresence): Promise<GameController | null> {
   const app = new Application();
   let initialized = false;
   const cleanups: Array<() => void> = [];
@@ -174,6 +175,10 @@ export async function mountGame(host: HTMLDivElement, player: LocalPlayer, initi
         position = { x: position.x + (projected.x - position.x) * blend, y: position.y + (projected.y - position.y) * blend };
       }
       time += Math.min(ticker.deltaMS / 1000, 0.05);
+      const voices = voicePresence?.get(room.id);
+      const pulse = motionPreference.matches ? 0.85 : 0.72 + Math.sin(time * 9) * 0.23;
+      mascot.speakingRing.visible = !!authority && voices?.get(authority.id) === 'speaking';
+      if (mascot.speakingRing.visible) mascot.speakingRing.alpha = pulse;
       if (input.x !== 0) facing = Math.sign(input.x);
       const bounce = motionPreference.matches ? 0 : Math.sin(time * (moving ? 17 : 2.5)) * (moving ? 2.5 : 0.8);
       mascot.root.position.set(position.x, position.y);
@@ -184,6 +189,8 @@ export async function mountGame(host: HTMLDivElement, player: LocalPlayer, initi
       mascot.shadow.scale.set(1 - Math.abs(bounce) * 0.018, 1);
       for (const remote of remotes.values()) {
         const sprite = remote.mascot;
+        sprite.speakingRing.visible = voices?.get(remote.player.id) === 'speaking';
+        if (sprite.speakingRing.visible) sprite.speakingRing.alpha = pulse;
         const dx = remote.player.position.x - sprite.root.x;
         const dy = remote.player.position.y - sprite.root.y;
         const blend = Math.hypot(dx, dy) > 150 ? 1 : 1 - Math.exp(-ticker.deltaMS / 75);
