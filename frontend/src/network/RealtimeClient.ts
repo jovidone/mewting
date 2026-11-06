@@ -32,6 +32,7 @@ export class RealtimeClient {
   private state: MultiplayerState = { status: 'idle', self: null, roomId: 'lobby', players: [], counts: emptyCounts(), transitioning: false, error: null, messages: [], receivedMessages: 0 };
   private listeners = new Set<() => void>();
   private sceneListeners = new Set<() => void>();
+  private chatListeners = new Set<(message: ChatMessage) => void>();
   private scene: RoomSnapshot | null = null;
   private resumeToken: string | undefined;
   private preferences: PlayerPreferences | null = null;
@@ -48,6 +49,10 @@ export class RealtimeClient {
   getState = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   subscribeScene = (listener: () => void) => { this.sceneListeners.add(listener); return () => { this.sceneListeners.delete(listener); }; };
+  subscribeLiveChat = (listener: (message: ChatMessage) => void) => {
+    this.chatListeners.add(listener);
+    return () => { this.chatListeners.delete(listener); };
+  };
   getScene = (): SceneState => ({ connected: this.state.status === 'online', playerId: this.state.self?.id ?? null, membershipVersion: this.membershipVersion, snapshot: this.scene });
   private update(patch: Partial<MultiplayerState>) { this.state = { ...this.state, ...patch }; this.listeners.forEach((listener) => listener()); }
   private notifyScene() { this.sceneListeners.forEach((listener) => listener()); }
@@ -197,6 +202,7 @@ export class RealtimeClient {
     if (message.roomId !== roomId || messages.some(({ id }) => id === message.id)) return;
     this.update({ messages: [...messages, message].slice(-CHAT_HISTORY_LIMIT),
       receivedMessages: receivedMessages + Number(message.senderId !== self?.id) });
+    this.chatListeners.forEach((listener) => listener(message));
   }
 
   sendChat = async (text: string): Promise<string | null> => {

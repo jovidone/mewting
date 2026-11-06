@@ -4,6 +4,10 @@ import type { RealtimeClient } from '../network/RealtimeClient';
 import { MOVEMENT_KEYS, readMovement } from './keyboard';
 import { createMascot } from './mascot';
 import { createScenery } from './scenery';
+import { createSpeechBubble } from './speech-bubble';
+
+const SPEECH_DURATION_MS = 4000;
+const SPEECH_FADE_MS = 400;
 
 export interface GameController {
   setRoom: (room: RoomDefinition) => void;
@@ -46,8 +50,23 @@ export async function mountGame(host: HTMLDivElement, player: LocalPlayer, initi
     let time = 0;
     let facing = 1;
     const characters = new Container({ sortableChildren: true });
-    world.addChild(scenery, characters);
+    const speechLayer = new Container({ eventMode: 'none' });
+    world.addChild(scenery, characters, speechLayer);
     characters.addChild(mascot.root);
+    const bubbles = new Map<string, { view: ReturnType<typeof createSpeechBubble>; expiresAt: number }>();
+    const removeBubble = (id: string) => {
+      bubbles.get(id)?.view.root.destroy({ children: true });
+      bubbles.delete(id);
+    };
+    const clearBubbles = () => { for (const id of bubbles.keys()) removeBubble(id); };
+    if (network) cleanups.push(network.subscribeLiveChat((message) => {
+      if (destroyed || cancelled() || message.roomId !== room.id || !network.getScene().connected) return;
+      removeBubble(message.senderId);
+      const view = createSpeechBubble(message.text);
+      speechLayer.addChild(view.root);
+      bubbles.set(message.senderId, { view, expiresAt: performance.now() + SPEECH_DURATION_MS });
+    }));
+    cleanups.push(clearBubbles);
     const remotes = new Map<string, { player: PlayerSnapshot; mascot: ReturnType<typeof createMascot>; facing: number }>();
     let authority: PlayerSnapshot | null = null;
     let authorityAt = 0;
@@ -75,6 +94,7 @@ export async function mountGame(host: HTMLDivElement, player: LocalPlayer, initi
       const state = network.getScene();
       const snapshot = state.snapshot;
       if (!state.connected || !snapshot || snapshot.roomId !== room.id) {
+        clearBubbles();
         authority = null;
         for (const remote of remotes.values()) remote.mascot.root.destroy({ children: true });
         remotes.clear();
@@ -90,6 +110,7 @@ export async function mountGame(host: HTMLDivElement, player: LocalPlayer, initi
       }
       const ids = new Set(snapshot.players.map((entry) => entry.id));
       for (const [id, remote] of remotes) if (!ids.has(id) || id === state.playerId) {
+        removeBubble(id);
         remote.mascot.root.destroy({ children: true }); remotes.delete(id);
       }
       for (const entry of snapshot.players) {
@@ -171,6 +192,17 @@ export async function mountGame(host: HTMLDivElement, player: LocalPlayer, initi
         sprite.body.scale.x = remote.facing;
         sprite.body.y = motionPreference.matches ? 0 : Math.sin(time * (Math.hypot(dx, dy) > 1 ? 17 : 2.5)) * 1.8;
       }
+      const now = performance.now();
+      for (const [id, bubble] of bubbles) {
+        const remaining = bubble.expiresAt - now;
+        if (remaining <= 0) {
+          removeBubble(id);
+          continue;
+        }
+        const avatar = id === authority?.id ? mascot.root : remotes.get(id)?.mascot.root;
+        if (avatar) bubble.view.place(avatar.x, avatar.y);
+        bubble.view.root.alpha = motionPreference.matches ? 1 : Math.min(1, remaining / SPEECH_FADE_MS);
+      }
     });
     app.render();
     if (!document.hidden) app.start();
@@ -179,6 +211,7 @@ export async function mountGame(host: HTMLDivElement, player: LocalPlayer, initi
         if (nextRoom.id === room.id) return;
         const nextScenery = createScenery(nextRoom);
         clearKeys();
+        clearBubbles();
         room = nextRoom;
         world.removeChild(scenery);
         scenery.destroy({ children: true });

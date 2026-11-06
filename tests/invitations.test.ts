@@ -28,6 +28,10 @@ test('a guest joining the copied room shares server membership with the host', a
   const origin = await app.listen({ host: '127.0.0.1', port: 0 });
   const host = new RealtimeClient(origin);
   const guest = new RealtimeClient(origin);
+  const hostLive: string[] = [];
+  const guestLive: string[] = [];
+  const stopHostChat = host.subscribeLiveChat((message) => hostLive.push(message.text));
+  const stopGuestChat = guest.subscribeLiveChat((message) => guestLive.push(message.text));
   try {
     host.start({ nickname: 'Host', color: 'sage' });
     await until(() => host.getState().status === 'online');
@@ -42,6 +46,8 @@ test('a guest joining the copied room shares server membership with the host', a
       assert.deepEqual(client.getState().messages.map((message) => message.text), ['Welcome to Catfé']);
     }
     const hostId = host.getState().self?.id;
+    assert.deepEqual(hostLive, ['Welcome to Catfé']);
+    assert.deepEqual(guestLive, []);
     const guestId = guest.getState().self?.id;
     const initialX = guest.getScene().snapshot?.players.find((player) => player.id === hostId)?.position.x;
     assert.ok(initialX !== undefined);
@@ -55,6 +61,8 @@ test('a guest joining the copied room shares server membership with the host', a
     await until(() => guest.getState().status === 'online');
     assert.equal(guest.getState().self?.id, guestId);
     assert.equal(guest.getState().messages.length, 2);
+    assert.deepEqual(hostLive, ['Welcome to Catfé', '<script>hello</script>']);
+    assert.deepEqual(guestLive, ['<script>hello</script>']);
     assert.equal(await guest.changeRoom('pawffice'), true);
     await until(() => host.getState().players.length === 1);
     assert.equal(guest.getState().players.length, 1);
@@ -67,6 +75,8 @@ test('a guest joining the copied room shares server membership with the host', a
     assert.equal(await guest.changeRoom('catfe'), true);
     assert.equal(guest.getState().messages.length, 3);
   } finally {
+    stopHostChat();
+    stopGuestChat();
     host.dispose();
     guest.dispose();
     await app.close();
